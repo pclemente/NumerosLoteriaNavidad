@@ -1,7 +1,7 @@
 import json
 import os
 
-jsonFileName = "LoteriaElNiñoStatus.json"
+jsonFileName = "LoteriaElNinoStatus.json"
 
 '''
 0: El sorteo no ha comenzado aún. Todos los números aparecerán como no premiados.

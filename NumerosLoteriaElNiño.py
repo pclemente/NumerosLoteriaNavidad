@@ -6,7 +6,7 @@ import re
 
 my_dictionary = {}
 
-jsonFileName = "LoteriaElNiño.json"
+jsonFileName = "LoteriaElNino.json"
 
 urls = [
     "https://www.rtve.es/loterias/loteria-nino/Loteria_00000.shtml",
