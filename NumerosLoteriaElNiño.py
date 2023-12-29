@@ -31,6 +31,10 @@ urls = [
     "https://www.rtve.es/loterias/loteria-nino/Loteria_95000.shtml",
 ]
 
+statusCode = 0
+
+my_dictionary["status"] = statusCode
+
 def create_json_file(data, filename):
     with open(filename, 'w') as file:
         json.dump(data, file, indent=2)
