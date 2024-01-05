@@ -1,5 +1,7 @@
 #!/bin/bash
 
+cd /Users/pablocpe/Documents/GitHub/NumerosLoteriaNavidad
+
 # Run the Python script
 python NumerosLoteriaElNino.py
 
