@@ -3,7 +3,7 @@
 cd /Users/pablocpe/Documents/GitHub/NumerosLoteriaNavidad
 
 # Run the Python script
-python NumerosLoteriaElNino.py
+python3 NumerosLoteriaElNino.py
 
 # Add all changes and commit with a timestamp
 git add .
