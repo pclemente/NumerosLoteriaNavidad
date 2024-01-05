@@ -8,6 +8,8 @@ my_dictionary = {}
 
 jsonFileName = "LoteriaElNino.json"
 
+normalMode = False
+
 urls = [
     "https://www.rtve.es/loterias/loteria-nino/Loteria_00000.shtml",
     "https://www.rtve.es/loterias/loteria-nino/Loteria_05000.shtml",
@@ -78,7 +80,8 @@ def parse_loteria_webpage(url):
                         sanitised2 = row_data[2].replace(".", "")
                         sanitised2 = sanitised2.replace("€", "")
                         sanitised2 = sanitised2.replace("\u20ac", "")
-                        my_dictionary[sanitised1] = sanitised2
+                        if normalMode:
+                            my_dictionary[sanitised1] = sanitised2
                         #print(my_dictionary)
                         #data.append(my_dictionary)
 
@@ -95,8 +98,8 @@ def parse_loteria_webpage(url):
                     sanitised2 = sanitised2.replace("€", "")
                     sanitised2 = sanitised2.replace("\u20ac", "")
                     sanitised2 = sanitised2.replace("Premio", "")
-
-                    my_dictionary[sanitised1] = sanitised2
+                    if normalMode:
+                        my_dictionary[sanitised1] = sanitised2
                     
             # Convert the data to JSON
             #json_data = json.dumps(data, ensure_ascii=False, indent=2)
