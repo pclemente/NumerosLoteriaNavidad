@@ -10,4 +10,5 @@ git add .
 git commit -m "Automated commit at $(date)"
 
 # Push to the remote repository (assuming origin and master branch)
-git push origin master
+gh repo view --json 'default_branch' --template '{{.DefaultBranch}}' | xargs -I % gh repo sync --force --repo .
+gh repo view --json 'ssh_url' --template '{{.SSHURL}}' | xargs -I % gh repo push --repo % --force
