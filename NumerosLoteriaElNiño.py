@@ -8,7 +8,7 @@ my_dictionary = {}
 
 jsonFileName = "LoteriaElNino.json"
 
-normalMode = False
+normalMode = True
 
 urls = [
     "https://www.rtve.es/loterias/loteria-nino/Loteria_00000.shtml",
