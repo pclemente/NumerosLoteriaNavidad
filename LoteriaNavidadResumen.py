@@ -11,7 +11,7 @@ status = 1
 #Primer premio
 numero1 = 72480
 #Segundo premio
-numero2 = 0
+numero2 = 40014
 #Tercer premio
 numero3 = 11840
 #Primer Cuarto
