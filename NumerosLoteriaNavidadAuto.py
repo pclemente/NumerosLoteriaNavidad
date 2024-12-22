@@ -138,5 +138,5 @@ if __name__ == "__main__":
 
             # Push to the remote repository (assuming origin and main branch)
             subprocess.run(['git', 'push', 'origin', 'main'])
-            time.sleep(150)
+            time.sleep(300)
 
