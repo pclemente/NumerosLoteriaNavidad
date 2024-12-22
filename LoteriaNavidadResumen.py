@@ -33,7 +33,7 @@ numero11 = 97345
 #Septimo Quinto
 numero12 = 75143
 #Octavo Quinto
-numero13 = 0
+numero13 = 60622
 fraseSorteoPDF = ''
 fraseListaPDF = ''
 listaPDF = ''
