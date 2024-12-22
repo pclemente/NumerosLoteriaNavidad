@@ -34,7 +34,7 @@ urls = [
     "https://www.rtve.es/loterias/loteria-navidad/Loteria_95000.shtml",
 ]
 
-statusCode = "2"
+statusCode = "4"
 
 my_dictionary["status"] = statusCode
 
