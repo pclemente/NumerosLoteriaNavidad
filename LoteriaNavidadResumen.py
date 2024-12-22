@@ -17,7 +17,7 @@ numero3 = 11840
 #Primer Cuarto
 numero4 = 77768
 #Segundo Cuarto
-numero5 = 0
+numero5 = 48020
 #Primer Quinto
 numero6 = 37876
 #Segundo Quinto
