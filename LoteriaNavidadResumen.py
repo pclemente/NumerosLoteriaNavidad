@@ -31,7 +31,7 @@ numero10 = 45225
 #Sexto Quinto
 numero11 = 97345
 #Septimo Quinto
-numero12 = 0
+numero12 = 75143
 #Octavo Quinto
 numero13 = 0
 fraseSorteoPDF = ''
