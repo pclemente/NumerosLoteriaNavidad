@@ -24,7 +24,7 @@ def set_status(status_code):
 # User input for status and error values
 #status_input = int(input("Enter status code (0-4): "))
 #error_input = int(input("Enter error code: "))
-status_input = 1
+status_input = 2
 error_input = 0
 
 # Validate and set the status
