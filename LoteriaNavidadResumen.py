@@ -15,7 +15,7 @@ numero2 = 0
 #Tercer premio
 numero3 = 11840
 #Primer Cuarto
-numero4 = 0
+numero4 = 77768
 #Segundo Cuarto
 numero5 = 0
 #Primer Quinto
