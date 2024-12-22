@@ -7,7 +7,7 @@ jsonFileNameLoad = "LoteriaNavidad.json"
 
 # Define variables
 timestamp_now = int(datetime.now().timestamp())
-status = 0
+status = 1
 #Primer premio
 numero1 = 0
 #Segundo premio
