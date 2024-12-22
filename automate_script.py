@@ -20,4 +20,4 @@ if __name__ == "__main__":
     while True:
         run_script()
         # Wait for 5 minutes
-        time.sleep(150)
+        time.sleep(300)
