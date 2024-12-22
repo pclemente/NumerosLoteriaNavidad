@@ -27,7 +27,7 @@ numero8 = 74778
 #Cuarto Quinto
 numero9 = 45456
 #Quinto Quinto
-numero10 = 0
+numero10 = 45225
 #Sexto Quinto
 numero11 = 0
 #Septimo Quinto
