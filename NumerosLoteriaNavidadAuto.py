@@ -3,6 +3,9 @@ from bs4 import BeautifulSoup
 import json
 import os
 import re
+import os
+import subprocess
+import time
 
 my_dictionary = {}
 
@@ -108,22 +111,32 @@ def parse_loteria_webpage(url):
         print(f"Failed to fetch the webpage. Status code: {response.status_code}")
 
 if __name__ == "__main__":
-
-    for url in urls:
-        result = parse_loteria_webpage(url)
     
-    if result:
-        # Get the script's directory
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        script_dir = script_dir + "/output"
+    while True:
 
-        print(script_dir)
+        for url in urls:
+            result = parse_loteria_webpage(url)
+        
+        if result:
+            # Get the script's directory
+            script_dir = os.path.dirname(os.path.abspath(__file__))
+            script_dir = script_dir + "/output"
 
-        # Specify the file path
-        output_file = os.path.join(script_dir, jsonFileName)
+            print(script_dir)
 
-        print(output_file)
+            # Specify the file path
+            output_file = os.path.join(script_dir, jsonFileName)
 
-        # Provide the dictionary and file path
-        create_json_file(my_dictionary, output_file)
+            print(output_file)
+
+            # Provide the dictionary and file path
+            create_json_file(my_dictionary, output_file)
+
+            # Add all changes and commit with a timestamp
+            subprocess.run(['git', 'add', '.'])
+            subprocess.run(['git', 'commit', '-m', f'Automated commit at {time.strftime("%Y-%m-%d %H:%M:%S")}'])
+
+            # Push to the remote repository (assuming origin and main branch)
+            subprocess.run(['git', 'push', 'origin', 'main'])
+            time.sleep(150)
 
