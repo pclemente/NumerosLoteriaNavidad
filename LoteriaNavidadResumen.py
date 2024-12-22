@@ -21,7 +21,7 @@ numero5 = 0
 #Primer Quinto
 numero6 = 37876
 #Segundo Quinto
-numero7 = 0
+numero7 = 72853
 #Tercer Quinto
 numero8 = 0
 #Cuarto Quinto
