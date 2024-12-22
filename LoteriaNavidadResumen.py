@@ -18,8 +18,8 @@ numero3 = 0
 numero4 = 0
 #Segundo Cuarto
 numero5 = 0
-#Prier Quinto
-numero6 = 0
+#Primer Quinto
+numero6 = 37876
 #Segundo Quinto
 numero7 = 0
 #Tercer Quinto
