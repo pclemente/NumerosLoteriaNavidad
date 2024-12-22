@@ -13,7 +13,7 @@ numero1 = 0
 #Segundo premio
 numero2 = 0
 #Tercer premio
-numero3 = 0
+numero3 = 11840
 #Primer Cuarto
 numero4 = 0
 #Segundo Cuarto
