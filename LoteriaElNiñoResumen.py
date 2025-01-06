@@ -32,8 +32,8 @@ extraccion_2cifras_2 = 26
 extraccion_2cifras_3 = 31
 extraccion_2cifras_4 = 68
 extraccion_2cifras_5 = 89
-reintegro_1 = 0
-reintegro_2 = 0
+reintegro_1 = 5
+reintegro_2 = 8
 reintegro_3 = 0
 
 # Create dictionary
