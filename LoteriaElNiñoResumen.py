@@ -7,7 +7,7 @@ jsonFileNameLoad = "LoteriaElNino.json"
 
 # Define variables
 timestamp_now = int(datetime.now().timestamp())
-status = 4
+status = 0
 primer_premio = 78908
 segundo_premio = 6766
 tercer_premio = 66777
