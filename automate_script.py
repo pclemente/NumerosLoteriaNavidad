@@ -22,4 +22,5 @@ if __name__ == "__main__":
     while True:
         run_script()
         # Wait for 5 minutes
+        print("Waiting for 5 minutes before next run...")
         time.sleep(300)
