@@ -133,6 +133,7 @@ if __name__ == "__main__":
             # Provide the dictionary and file path
             create_json_file(my_dictionary, output_file)
 
+            '''
             # Add all changes and commit with a timestamp
             subprocess.run(['git', 'add', '.'])
             subprocess.run(['git', 'commit', '-m', f'Automated commit at {time.strftime("%Y-%m-%d %H:%M:%S")}'])
@@ -140,4 +141,4 @@ if __name__ == "__main__":
             # Push to the remote repository (assuming origin and main branch)
             subprocess.run(['git', 'push', 'origin', 'main'])
             time.sleep(300)
-
+            '''
