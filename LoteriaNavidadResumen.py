@@ -9,31 +9,31 @@ jsonFileNameLoad = "LoteriaNavidad.json"
 timestamp_now = int(datetime.now().timestamp())
 status = 0
 #Primer premio
-numero1 = 72480
+numero1 = -1
 #Segundo premio
-numero2 = 40014
+numero2 = -1
 #Tercer premio
-numero3 = 11840
+numero3 = -1
 #Primer Cuarto
-numero4 = 77768
+numero4 = -1
 #Segundo Cuarto
-numero5 = 48020
+numero5 = -1        
 #Primer Quinto
-numero6 = 37876
+numero6 = -1
 #Segundo Quinto
-numero7 = 72853
+numero7 = -1
 #Tercer Quinto
-numero8 = 74778
+numero8 = -1
 #Cuarto Quinto
-numero9 = 45456
+numero9 = -1
 #Quinto Quinto
-numero10 = 45225
+numero10 = -1
 #Sexto Quinto
-numero11 = 97345
+numero11 = -1
 #Septimo Quinto
-numero12 = 75143
+numero12 = -1
 #Octavo Quinto
-numero13 = 60622
+numero13 = -1
 fraseSorteoPDF = ''
 fraseListaPDF = ''
 listaPDF = ''
