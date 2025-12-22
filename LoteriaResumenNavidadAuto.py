@@ -81,7 +81,7 @@ def parse_rtve_loteria_resumen():
                 if p1:
                     span = p1.find('span')
                     if span and span.text.strip():
-                        numero1 = span.text.strip()
+                        numero1 = int(span.text.strip())
                         print(f"El Gordo: {numero1}")
                 
                 # Extract Segundo (2nd prize) - class p2
@@ -89,7 +89,7 @@ def parse_rtve_loteria_resumen():
                 if p2:
                     span = p2.find('span')
                     if span and span.text.strip():
-                        numero2 = span.text.strip()
+                        numero2 = int(span.text.strip())
                         print(f"Segundo: {numero2}")
                 
                 # Extract Tercero (3rd prize) - class p3
@@ -97,7 +97,7 @@ def parse_rtve_loteria_resumen():
                 if p3:
                     span = p3.find('span')
                     if span and span.text.strip():
-                        numero3 = span.text.strip()
+                        numero3 = int(span.text.strip())
                         print(f"Tercero: {numero3}")
                 
                 # Extract Cuarto (4th prizes - 2 prizes) - class p4
@@ -105,10 +105,10 @@ def parse_rtve_loteria_resumen():
                 if p4:
                     cuartos = p4.find_all('span')
                     if len(cuartos) >= 1 and cuartos[0].text.strip():
-                        numero4 = cuartos[0].text.strip()
+                        numero4 = int(cuartos[0].text.strip())
                         print(f"Primer Cuarto: {numero4}")
                     if len(cuartos) >= 2 and cuartos[1].text.strip():
-                        numero5 = cuartos[1].text.strip()
+                        numero5 = int(cuartos[1].text.strip())
                         print(f"Segundo Cuarto: {numero5}")
                 
                 # Extract Quinto (5th prizes - 8 prizes) - class p5
@@ -118,7 +118,7 @@ def parse_rtve_loteria_resumen():
                     quinto_nums = [numero6, numero7, numero8, numero9, numero10, numero11, numero12, numero13]
                     for i, span in enumerate(quintos):
                         if i < 8 and span.text.strip():
-                            quinto_nums[i] = span.text.strip()
+                            quinto_nums[i] = int(span.text.strip())
                             print(f"Quinto {i+1}: {quinto_nums[i]}")
                     
                     numero6, numero7, numero8, numero9, numero10, numero11, numero12, numero13 = quinto_nums
