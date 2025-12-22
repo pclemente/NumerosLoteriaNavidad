@@ -7,7 +7,7 @@ def run_script():
     os.chdir('/Users/pablocpe/Documents/GitHub/NumerosLoteriaNavidad')
 
     # Run the Python script
-    subprocess.run(['/usr/local/bin/python3', 'NumerosLoteriaElNiño.py'])
+    subprocess.run(['/usr/local/bin/python3', 'NumerosLoteriaNavidad.py'])
 
     # Add all changes and commit with a timestamp
     subprocess.run(['git', 'add', '.'])
