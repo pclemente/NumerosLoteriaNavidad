@@ -16,7 +16,7 @@ Status Codes:
 
 # Current status of the lottery draw
 # Change this value to update the status across all scripts
-LOTTERY_STATUS = 2
+LOTTERY_STATUS = 4
 
 # Valid status codes
 VALID_STATUSES = {0, 1, 2, 3, 4}
