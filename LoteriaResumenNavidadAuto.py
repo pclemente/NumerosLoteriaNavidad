@@ -5,6 +5,7 @@ import os
 from datetime import datetime
 import time
 import subprocess
+from LoteriaNavidadStatusConstant import get_status
 
 jsonFileName = "LoteriaNavidadResumen.json"
 
@@ -24,7 +25,7 @@ def parse_rtve_loteria_resumen():
     
     # Initialize default values (numbers not drawn yet)
     timestamp_now = int(datetime.now().timestamp())
-    status = 0
+    status = get_status()
     # Primer premio (El Gordo)
     numero1 = -1
     # Segundo premio
@@ -161,37 +162,22 @@ def parse_rtve_loteria_resumen():
     return premios
 
 if __name__ == "__main__":
+    # Parse the webpage
+    result = parse_rtve_loteria_resumen()
     
-    while True:
-        # Parse the webpage
-        result = parse_rtve_loteria_resumen()
-        
-        # Get the script's directory
-        script_dir = os.path.dirname(os.path.abspath(__file__))
-        script_dir = script_dir + "/output"
-        
-        print(script_dir)
-        
-        # Specify the file path
-        output_file = os.path.join(script_dir, jsonFileName)
-        
-        print(output_file)
-        
-        # Save to JSON file
-        create_json_file(result, output_file)
-        
-        print(f"Data saved to {output_file}")
-        print(f"Results: {result}")
-        
-        # Git automation - add, commit and push
-        try:
-            subprocess.run(['git', 'add', '.'], check=True)
-            subprocess.run(['git', 'commit', '-m', f'Automated commit - Loteria Resumen at {time.strftime("%Y-%m-%d %H:%M:%S")}'], check=True)
-            subprocess.run(['git', 'push', 'origin', 'main'], check=True)
-            print("Changes committed and pushed successfully")
-        except subprocess.CalledProcessError as e:
-            print(f"Git operation failed: {e}")
-        
-        # Wait 5 minutes before next check (300 seconds)
-        print("Waiting 5 minutes before next check...")
-        time.sleep(300)
+    # Get the script's directory
+    script_dir = os.path.dirname(os.path.abspath(__file__))
+    script_dir = script_dir + "/output"
+    
+    print(script_dir)
+    
+    # Specify the file path
+    output_file = os.path.join(script_dir, jsonFileName)
+    
+    print(output_file)
+    
+    # Save to JSON file
+    create_json_file(result, output_file)
+    
+    print(f"Data saved to {output_file}")
+    print(f"Results: {result}")

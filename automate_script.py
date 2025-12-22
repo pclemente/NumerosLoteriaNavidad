@@ -8,6 +8,8 @@ def run_script():
 
     # Run the Python script
     subprocess.run(['/usr/local/bin/python3', 'NumerosLoteriaNavidad.py'])
+    subprocess.run(['/usr/local/bin/python3', 'LoteriaResumenNavidadAuto.py'])
+    subprocess.run(['/usr/local/bin/python3', 'LoteriaNavidadStatus.py'])
 
     # Add all changes and commit with a timestamp
     subprocess.run(['git', 'add', '.'])
