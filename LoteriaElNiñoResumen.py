@@ -1,13 +1,14 @@
 import json
 from datetime import datetime
 import os
+from LoteriaElNiñoStatusConstant import get_status
 
 jsonFileName = "LoteriaElNinoResumen.json"
 jsonFileNameLoad = "LoteriaElNino.json"
 
 # Define variables
 timestamp_now = int(datetime.now().timestamp())
-status = 0
+status = get_status()
 primer_premio = -1
 segundo_premio = -1
 tercer_premio = -1

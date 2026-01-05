@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 import json
 import os
 import re
+from LoteriaElNiñoStatusConstant import get_status
 
 my_dictionary = {}
 
@@ -33,7 +34,7 @@ urls = [
     "https://www.rtve.es/loterias/loteria-nino/Loteria_95000.shtml",
 ]
 
-statusCode = "0"
+statusCode = str(get_status())
 
 my_dictionary["status"] = statusCode
 

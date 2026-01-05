@@ -1,6 +1,6 @@
 {
-  "timestamp": 1736164013,
-  "status": 4,
+  "timestamp": 1767620908,
+  "status": 0,
   "Primer_premio": -1,
   "Segundo_Premio": -1,
   "Tercer_Premio": -1,
@@ -25,7 +25,7 @@
   "Extraccion_2_cifras_3": -1,
   "Extraccion_2_cifras_4": -1,
   "Extraccion_2_cifras_5": -1,
-  "Reintegro_1": 0,
-  "Reintegro_2": 0,
-  "Reintegro_3": 0
+  "Reintegro_1": -1,
+  "Reintegro_2": -1,
+  "Reintegro_3": -1
 }
