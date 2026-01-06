@@ -8,7 +8,7 @@ def run_script():
 
     # Run the Python script
     subprocess.run(['/usr/local/bin/python3', 'NumerosLoteriaElNiño.py'])
-    subprocess.run(['/usr/local/bin/python3', 'LoteriaElNiñoResumen.py'])
+    subprocess.run(['/usr/local/bin/python3', 'LoteriaElNiñoResumenAuto.py'])
     subprocess.run(['/usr/local/bin/python3', 'LoteriaElNiñoStatus.py'])
 
     # Add all changes and commit with a timestamp
