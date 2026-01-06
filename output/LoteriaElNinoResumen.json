@@ -1,5 +1,5 @@
 {
-  "timestamp": 1767698575,
+  "timestamp": 1767698700,
   "status": 1,
   "Primer_premio": 6703,
   "Segundo_Premio": 45875,
@@ -26,6 +26,6 @@
   "Extraccion_2_cifras_4": 44,
   "Extraccion_2_cifras_5": 94,
   "Reintegro_1": 3,
-  "Reintegro_2": 0,
+  "Reintegro_2": 1,
   "Reintegro_3": 0
 }
