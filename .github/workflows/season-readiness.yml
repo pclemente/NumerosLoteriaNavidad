@@ -1,0 +1,76 @@
+name: Confirm 2026 season readiness
+
+on:
+  workflow_dispatch:
+  schedule:
+    # 09:17 Europe/Madrid on 30 November. The script pins the campaign year.
+    - cron: "17 8 30 11 *"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: season-readiness
+  cancel-in-progress: false
+
+jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Select campaign window
+        id: campaign
+        run: |
+          today="$(TZ=Europe/Madrid date +%F)"
+          if [[ "$today" < "2026-11-30" || "$today" > "2027-01-06" ]]; then
+            echo "Outside the configured campaign; no readiness commit needed."
+            echo "active=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "active=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Test publication safeguards
+        if: steps.campaign.outputs.active == 'true'
+        run: |
+          python -m pip install --requirement requirements.txt
+          python -m unittest discover -s tests -v
+
+      - name: Record the successful campaign preflight
+        if: steps.campaign.outputs.active == 'true'
+        env:
+          RUN_ID: ${{ github.run_id }}
+          COMMIT_SHA: ${{ github.sha }}
+        run: |
+          python - <<'PY'
+          import json
+          import os
+          from datetime import datetime
+          from pathlib import Path
+          from zoneinfo import ZoneInfo
+
+          evidence = {
+              "checkedAt": datetime.now(ZoneInfo("Europe/Madrid")).isoformat(timespec="seconds"),
+              "commit": os.environ["COMMIT_SHA"],
+              "workflowRun": os.environ["RUN_ID"],
+              "navidadYear": 2026,
+              "ninoYear": 2027,
+              "tests": "passed",
+          }
+          Path(".github/season-readiness.json").write_text(
+              json.dumps(evidence, indent=2) + "\n",
+              encoding="utf-8",
+          )
+          PY
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- .github/season-readiness.json
+          git commit -m "Record 2026 season readiness"
+          git push origin HEAD:main

@@ -1,0 +1,145 @@
+name: Publish seasonal lottery results
+
+on:
+  workflow_dispatch:
+    inputs:
+      draw:
+        description: Draw to refresh from RTVE
+        required: true
+        type: choice
+        options:
+          - navidad
+          - nino
+  schedule:
+    # UTC. Europe/Madrid is UTC+1 on both draw dates.
+    - cron: "*/5 7-17 22 12 *"
+    - cron: "*/5 10-16 6 1 *"
+
+permissions:
+  contents: write
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+
+      - name: Install parser dependencies
+        run: python -m pip install --requirement requirements.txt
+
+      - name: Test publication safeguards
+        run: python -m unittest discover -s tests -v
+
+      - name: Select configured draw
+        id: selection
+        env:
+          MANUAL_DRAW: ${{ inputs.draw }}
+        run: |
+          draw="$MANUAL_DRAW"
+          if [[ -z "$draw" ]]; then
+            draw="$(python lottery_pipeline.py scheduled-draw)"
+          fi
+          case "$draw" in
+            navidad) year=2026 ;;
+            nino) year=2027 ;;
+            "")
+              echo "No configured draw today; leaving published history unchanged."
+              echo "active=false" >> "$GITHUB_OUTPUT"
+              exit 0
+              ;;
+            *)
+              echo "Unknown draw: $draw" >&2
+              exit 1
+              ;;
+          esac
+          {
+            echo "active=true"
+            echo "draw=$draw"
+            echo "year=$year"
+          } >> "$GITHUB_OUTPUT"
+
+      - name: Fetch, validate, and update public files
+        if: steps.selection.outputs.active == 'true'
+        run: >-
+          python lottery_pipeline.py update
+          "${{ steps.selection.outputs.draw }}"
+          --confirm-year "${{ steps.selection.outputs.year }}"
+
+      - name: Revalidate the public triplet
+        if: steps.selection.outputs.active == 'true'
+        run: >-
+          python lottery_pipeline.py validate
+          "${{ steps.selection.outputs.draw }}"
+          --directory output
+          --expected-year "${{ steps.selection.outputs.year }}"
+
+      - name: Commit only the selected public triplet
+        if: steps.selection.outputs.active == 'true'
+        env:
+          DRAW: ${{ steps.selection.outputs.draw }}
+          YEAR: ${{ steps.selection.outputs.year }}
+        run: |
+          if [[ "$DRAW" == "navidad" ]]; then
+            files=(
+              output/LoteriaNavidad.json
+              output/LoteriaNavidadResumen.json
+              output/LoteriaNavidadStatus.json
+            )
+            label="Navidad"
+          else
+            files=(
+              output/LoteriaElNino.json
+              output/LoteriaElNinoResumen.json
+              output/LoteriaElNinoStatus.json
+            )
+            label="El Niño"
+          fi
+          if git diff --quiet -- "${files[@]}"; then
+            echo "RTVE has no new validated results."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- "${files[@]}"
+          git commit -m "Update $label $YEAR results"
+          git push origin HEAD:main
+
+      - name: Configure GitHub Pages
+        if: steps.selection.outputs.active == 'true'
+        uses: actions/configure-pages@v5
+
+      - name: Build clean Pages artifact
+        if: steps.selection.outputs.active == 'true'
+        run: |
+          mkdir -p _site/output
+          cp CNAME _site/CNAME
+          touch _site/.nojekyll
+          rsync -a --exclude='.DS_Store' output/ _site/output/
+
+      - name: Upload Pages artifact
+        if: steps.selection.outputs.active == 'true'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+      - name: Deploy GitHub Pages
+        if: steps.selection.outputs.active == 'true'
+        id: deployment
+        uses: actions/deploy-pages@v4

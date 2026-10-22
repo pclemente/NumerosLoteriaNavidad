@@ -1,0 +1,5 @@
+.DS_Store
+.lottery-staging/
+.venv/
+__pycache__/
+*.py[cod]

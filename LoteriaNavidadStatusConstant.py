@@ -14,9 +14,10 @@ Status Codes:
    y deberías comprobar todos tus números contra ella.
 """
 
-# Current status of the lottery draw
-# Change this value to update the status across all scripts
-LOTTERY_STATUS = 4
+# Deprecated compatibility constant. The validated pipeline derives status 1/2
+# from the source and never uses this value to publish public JSON.
+DRAW_YEAR = 2026
+LOTTERY_STATUS = 0
 
 # Valid status codes
 VALID_STATUSES = {0, 1, 2, 3, 4}
