@@ -12,8 +12,8 @@ on:
           - nino
   schedule:
     # UTC. Europe/Madrid is UTC+1 on both draw dates.
-    - cron: "*/5 7-17 22 12 *"
-    - cron: "*/5 10-16 6 1 *"
+    - cron: "*/5 8-17 22 12 *"
+    - cron: "*/5 11-16 6 1 *"
 
 permissions:
   contents: write
@@ -82,7 +82,7 @@ jobs:
           "${{ steps.selection.outputs.draw }}"
           --confirm-year "${{ steps.selection.outputs.year }}"
 
-      - name: Revalidate the public triplet
+      - name: Revalidate the public endpoints
         if: steps.selection.outputs.active == 'true'
         run: >-
           python lottery_pipeline.py validate
@@ -90,7 +90,7 @@ jobs:
           --directory output
           --expected-year "${{ steps.selection.outputs.year }}"
 
-      - name: Commit only the selected public triplet
+      - name: Commit only the selected public endpoints
         if: steps.selection.outputs.active == 'true'
         env:
           DRAW: ${{ steps.selection.outputs.draw }}
@@ -101,6 +101,7 @@ jobs:
               output/LoteriaNavidad.json
               output/LoteriaNavidadResumen.json
               output/LoteriaNavidadStatus.json
+              output/LoteriaNavidadCurrentStatus.json
             )
             label="Navidad"
           else
@@ -108,6 +109,7 @@ jobs:
               output/LoteriaElNino.json
               output/LoteriaElNinoResumen.json
               output/LoteriaElNinoStatus.json
+              output/LoteriaElNinoCurrentStatus.json
             )
             label="El Niño"
           fi

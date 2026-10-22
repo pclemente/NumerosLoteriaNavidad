@@ -1,0 +1,9 @@
+{
+  "year": 2027,
+  "status": 0,
+  "state": "not_started",
+  "message": "El sorteo aún no ha comenzado.",
+  "drawDate": "2027-01-06T12:00:00+01:00",
+  "timezone": "Europe/Madrid",
+  "error": 0
+}

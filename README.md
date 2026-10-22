@@ -9,35 +9,46 @@ publica el contenido de `output/` en
 
 La configuración activa está fijada de forma explícita para estos sorteos:
 
-| Sorteo | Año esperado | Fecha (Europe/Madrid) | Histórico publicado hasta que haya resultados nuevos |
+| Sorteo | Año esperado | Inicio (Europe/Madrid) | Histórico publicado hasta que haya resultados nuevos |
 | --- | ---: | --- | --- |
-| Navidad | 2026 | 22 de diciembre de 2026 | Navidad 2025 |
-| El Niño | 2027 | 6 de enero de 2027 | El Niño 2026 |
+| Navidad | 2026 | `2026-12-22T09:00:00+01:00` | Navidad 2025 |
+| El Niño | 2027 | `2027-01-06T12:00:00+01:00` | El Niño 2026 |
 
-Los seis ficheros públicos no se reinician antes del sorteo. La aplicación
-puede seguir mostrando el último resumen completo como histórico. El cambio de
-temporada solo ocurre cuando RTVE declara el año esperado y ya contiene al
-menos un premio tanto en el resumen como en el listado de números.
+Los dos conjuntos históricos de tres ficheros no se reinician antes del
+sorteo. La aplicación puede seguir mostrando el último resumen completo como
+histórico. Dos endpoints separados describen la temporada configurada y
+devuelven estado `0` durante la pretemporada. El cambio de los datos históricos
+y del estado actual solo ocurre cuando RTVE declara el año esperado y ya
+contiene al menos un premio tanto en el resumen como en el listado de números.
 
 Los endpoints estables son:
 
 - `LoteriaNavidad.json`, `LoteriaNavidadResumen.json` y
   `LoteriaNavidadStatus.json`.
+- `LoteriaNavidadCurrentStatus.json`, estado de Navidad 2026.
 - `LoteriaElNino.json`, `LoteriaElNinoResumen.json` y
   `LoteriaElNinoStatus.json`.
+- `LoteriaElNinoCurrentStatus.json`, estado de El Niño 2027.
 
-Cada fichero generado para la nueva temporada incluye `year`. Los tres años,
-los tres estados y el año de `timestamp` deben coincidir. Se conserva la forma
-de los campos históricos para los clientes existentes: todos los valores del
-listado de números siguen siendo cadenas, incluido `year`; en resumen y estado,
-`year` es un entero.
+Los clientes deben consultar `CurrentStatus` para saber si el sorteo de la
+temporada configurada ha comenzado. Los `Status.json` heredados pertenecen al
+mismo histórico que sus ficheros de números y resumen, por lo que pueden seguir
+en estado `4` mientras `CurrentStatus` anuncia el siguiente sorteo con estado
+`0`.
+
+Cada fichero generado cuando llegan resultados de la nueva temporada incluye
+`year`. En ese momento, los cuatro años, los cuatro estados y el año de
+`timestamp` deben coincidir. Se conserva la forma de los campos históricos para
+los clientes existentes: todos los valores del listado de números siguen
+siendo cadenas, incluido `year`; en resumen, estado y `CurrentStatus`, `year`
+es un entero.
 
 ## Publicación automática
 
-El workflow `publish-results.yml` consulta RTVE cada cinco minutos en las
-ventanas del 22 de diciembre y del 6 de enero. En cualquier otro día termina
-sin tocar los datos. También admite publicación manual una vez alcanzada la
-fecha del sorteo; para inspeccionar sin publicar se usa `stage`.
+El workflow `publish-results.yml` consulta RTVE cada cinco minutos desde la hora
+de inicio en las ventanas del 22 de diciembre y del 6 de enero. En cualquier
+otro día termina sin tocar los datos. También admite publicación manual una vez
+alcanzada la hora del sorteo; para inspeccionar sin publicar se usa `stage`.
 Tras un cambio validado, el mismo job hace commit y despliega un artefacto Pages
 limpio; así no depende de que un push hecho por `GITHUB_TOKEN` active otro
 workflow. `deploy-pages.yml` publica los cambios manuales enviados a `main`.
@@ -49,15 +60,16 @@ casos:
 - el título o el contenedor `viewLoteriaAAAA` no corresponde al año esperado;
 - falta alguna de las 20 páginas de rangos, falla HTTPS o cambia el HTML;
 - el resumen todavía no tiene premios o el listado está vacío;
-- los metadatos no coinciden entre los tres JSON;
+- los metadatos no coinciden entre los cuatro JSON;
 - una actualización del mismo año retira o reduce un importe, o cambia un
   número ya publicado en el resumen; los premios acumulados sí pueden aumentar.
 
 El productor asigna estado `1` mientras el resumen está incompleto y estado
-`2` cuando RTVE ya expone todos los premios. Nunca asigna automáticamente los
-estados oficiales `3` o `4`. Si los datos validados no han cambiado, tampoco
-actualiza el timestamp ni crea un commit. El workflow añade exclusivamente los
-tres JSON del sorteo seleccionado.
+`2` cuando RTVE ya expone todos los premios, y actualiza `CurrentStatus` en la
+misma escritura. Nunca asigna automáticamente los estados oficiales `3` o `4`.
+Si los datos validados no han cambiado, tampoco actualiza el timestamp ni crea
+un commit. El workflow añade exclusivamente los cuatro JSON del sorteo
+seleccionado.
 
 GitHub puede desactivar los workflows programados de repositorios públicos tras
 60 días sin actividad. `season-readiness.yml` ejecuta las pruebas el 30 de
@@ -86,18 +98,19 @@ python lottery_pipeline.py validate navidad \
   --directory .lottery-staging/navidad-2026 --expected-year 2026
 ```
 
-Antes de la fecha del sorteo o antes de que RTVE cambie a 2026, el primer
+Antes de la hora del sorteo o antes de que RTVE cambie a 2026, el primer
 comando debe fallar por fecha o por año de origen. Ese fallo es la protección
 que mantiene el histórico publicado.
 
-Tras revisar los tres JSON, una publicación local exige confirmar el año:
+Tras revisar los cuatro JSON, una publicación local exige confirmar el año:
 
 ```bash
 python lottery_pipeline.py publish navidad \
   --candidate .lottery-staging/navidad-2026 \
   --output output --confirm-year 2026
 git diff -- output/LoteriaNavidad.json \
-  output/LoteriaNavidadResumen.json output/LoteriaNavidadStatus.json
+  output/LoteriaNavidadResumen.json output/LoteriaNavidadStatus.json \
+  output/LoteriaNavidadCurrentStatus.json
 ```
 
 Para El Niño se usan `nino` y `2027`. `update` combina las fases anteriores y
@@ -136,13 +149,27 @@ usará como fuente futura sin contrastarlo antes con la lista oficial.
 
 ## Estados
 
-- `0`: el sorteo todavía no ha comenzado.
-- `1`: el sorteo está en curso y los premios se incorporan progresivamente.
-- `2`: el origen contiene el resumen completo, pendiente de lista oficial.
-- `3`: existe lista oficial en PDF.
-- `4`: listado contrastado con la lista oficial.
+`CurrentStatus` expone `year`, `status`, `state`, `message`, `drawDate`,
+`timezone` y `error`. Sus transiciones son:
 
-Para preparar otra temporada hay que cambiar los años y fechas de `NAVIDAD` y
-`NINO` en `lottery_pipeline.py`, los años del selector del workflow y sus
-pruebas. Los cron pueden permanecer iguales porque `scheduled-draw` solo activa
-las fechas configuradas.
+| `status` | `state` | `message` |
+| ---: | --- | --- |
+| `0` | `not_started` | `El sorteo aún no ha comenzado.` |
+| `1` | `in_progress` | `El sorteo está en curso.` |
+| `2` | `completed_pending_verification` | `El sorteo ha finalizado y está pendiente de verificación oficial.` |
+| `3` | `official_list_available` | `La lista oficial del sorteo está disponible.` |
+| `4` | `officially_verified` | `Los resultados del sorteo se han verificado con la lista oficial.` |
+
+`drawDate` y `timezone` permanecen fijos durante toda la temporada. El estado
+`3` requiere una lista oficial en PDF y el `4`, que el listado se haya
+contrastado con ella.
+
+El endpoint es un fichero estático y cambia al publicar resultados validados,
+no por el mero paso del reloj. Si `drawDate` ya ha pasado y todavía devuelve
+estado `0`, el cliente debe mostrar que la actualización está pendiente en vez
+de asegurar que el sorteo no ha comenzado.
+
+Para preparar otra temporada hay que cambiar los años, fechas y horas de
+`NAVIDAD` y `NINO` en `lottery_pipeline.py`, los años del selector del workflow
+y sus pruebas. Los cron pueden permanecer iguales si se conservan las horas,
+porque `scheduled-draw` solo activa las fechas configuradas.

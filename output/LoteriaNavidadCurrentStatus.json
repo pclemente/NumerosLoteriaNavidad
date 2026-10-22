@@ -1,0 +1,9 @@
+{
+  "year": 2026,
+  "status": 0,
+  "state": "not_started",
+  "message": "El sorteo aún no ha comenzado.",
+  "drawDate": "2026-12-22T09:00:00+01:00",
+  "timezone": "Europe/Madrid",
+  "error": 0
+}

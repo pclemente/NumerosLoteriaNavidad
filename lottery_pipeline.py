@@ -56,10 +56,12 @@ class DrawConfig:
     year: int
     month: int
     day: int
+    hour: int
     source_path: str
     numbers_file: str
     summary_file: str
     status_file: str
+    current_status_file: str
     groups: tuple[SummaryGroup, ...]
     minimum_major_prizes: tuple[tuple[str, int], ...]
     expected_total: int
@@ -77,6 +79,14 @@ class DrawConfig:
         return self.numbers_file, self.summary_file, self.status_file
 
     @property
+    def publication_filenames(self) -> tuple[str, str, str, str]:
+        return (*self.filenames, self.current_status_file)
+
+    @property
+    def draw_datetime(self) -> datetime:
+        return datetime(self.year, self.month, self.day, self.hour, tzinfo=MADRID)
+
+    @property
     def summary_keys(self) -> tuple[str, ...]:
         return tuple(key for group in self.groups for key in group.keys)
 
@@ -91,10 +101,12 @@ NAVIDAD = DrawConfig(
     year=2026,
     month=12,
     day=22,
+    hour=9,
     source_path="loteria-navidad",
     numbers_file="LoteriaNavidad.json",
     summary_file="LoteriaNavidadResumen.json",
     status_file="LoteriaNavidadStatus.json",
+    current_status_file="LoteriaNavidadCurrentStatus.json",
     groups=(
         SummaryGroup("p1", ("numero1",), 5),
         SummaryGroup("p2", ("numero2",), 5),
@@ -130,10 +142,12 @@ NINO = DrawConfig(
     year=2027,
     month=1,
     day=6,
+    hour=12,
     source_path="loteria-nino",
     numbers_file="LoteriaElNino.json",
     summary_file="LoteriaElNinoResumen.json",
     status_file="LoteriaElNinoStatus.json",
+    current_status_file="LoteriaElNinoCurrentStatus.json",
     groups=(
         SummaryGroup("p1", ("Primer_premio",), 5),
         SummaryGroup("p2", ("Segundo_Premio",), 5),
@@ -160,6 +174,37 @@ NINO = DrawConfig(
 )
 
 CONFIGS = {config.key: config for config in (NAVIDAD, NINO)}
+
+CURRENT_STATUS_DETAILS = {
+    0: ("not_started", "El sorteo aún no ha comenzado."),
+    1: ("in_progress", "El sorteo está en curso."),
+    2: (
+        "completed_pending_verification",
+        "El sorteo ha finalizado y está pendiente de verificación oficial.",
+    ),
+    3: ("official_list_available", "La lista oficial del sorteo está disponible."),
+    4: (
+        "officially_verified",
+        "Los resultados del sorteo se han verificado con la lista oficial.",
+    ),
+}
+
+
+def current_status_payload(config: DrawConfig, status: int) -> dict[str, Any]:
+    """Return the public status contract for the configured season."""
+    try:
+        state, message = CURRENT_STATUS_DETAILS[status]
+    except KeyError as error:
+        raise PipelineError(f"unknown lottery status {status}") from error
+    return {
+        "year": config.year,
+        "status": status,
+        "state": state,
+        "message": message,
+        "drawDate": config.draw_datetime.isoformat(timespec="seconds"),
+        "timezone": "Europe/Madrid",
+        "error": 0,
+    }
 
 
 def _integer(value: Any, label: str) -> int:
@@ -329,14 +374,10 @@ def _madrid_now() -> datetime:
 
 def _require_draw_started(config: DrawConfig, now: datetime | None = None) -> datetime:
     current = (now or _madrid_now()).astimezone(MADRID)
-    if (current.year, current.month, current.day) < (
-        config.year,
-        config.month,
-        config.day,
-    ):
+    if current < config.draw_datetime:
         raise PipelineError(
-            f"{config.label} {config.year} has not reached its draw date "
-            f"({config.day:02d}/{config.month:02d}/{config.year} Europe/Madrid)"
+            f"{config.label} {config.year} has not reached its draw date and time "
+            f"({config.draw_datetime.isoformat(timespec='seconds')})"
         )
     return current
 
@@ -347,7 +388,7 @@ def build_candidate(
     number_pages: Iterable[tuple[str, str]],
     now: datetime | None = None,
 ) -> dict[str, dict[str, Any]]:
-    """Build and validate an in-memory three-file candidate."""
+    """Build and validate an in-memory publication candidate."""
     observed_at = _require_draw_started(config, now)
     if observed_at.year != config.year:
         raise PipelineError(
@@ -403,14 +444,21 @@ def build_candidate(
         config.numbers_file: numbers,
         config.summary_file: summary,
         config.status_file: status_payload,
+        config.current_status_file: current_status_payload(config, status),
     }
     validate_payloads(config, candidate, config.year, require_explicit_year=True)
     return candidate
 
 
-def _read_payloads(config: DrawConfig, directory: Path) -> dict[str, dict[str, Any]]:
+def _read_payloads(
+    config: DrawConfig,
+    directory: Path,
+    *,
+    include_current_status: bool = False,
+) -> dict[str, dict[str, Any]]:
     payloads: dict[str, dict[str, Any]] = {}
-    for filename in config.filenames:
+    filenames = config.publication_filenames if include_current_status else config.filenames
+    for filename in filenames:
         path = directory / filename
         try:
             with path.open(encoding="utf-8") as handle:
@@ -429,7 +477,11 @@ def _payload_years(
     require_explicit_year: bool,
 ) -> set[int]:
     years: set[int] = set()
-    for filename, payload in payloads.items():
+    # The dedicated current-season endpoint intentionally has a newer year
+    # while the legacy triplet remains historical. Its year is validated
+    # separately whenever it is part of a publication candidate.
+    for filename in config.filenames:
+        payload = payloads[filename]
         if "year" in payload:
             years.add(_integer(payload["year"], f"{filename}.year"))
         elif require_explicit_year:
@@ -495,6 +547,27 @@ def _validate_summary_coverage(
             )
 
 
+def _validate_current_status(
+    config: DrawConfig,
+    payload: dict[str, Any],
+    status: int,
+) -> None:
+    expected = current_status_payload(config, status)
+    if set(payload) != set(expected):
+        missing = sorted(set(expected) - set(payload))
+        extra = sorted(set(payload) - set(expected))
+        raise PipelineError(
+            f"{config.current_status_file}: invalid fields; missing={missing}, extra={extra}"
+        )
+    for field, expected_value in expected.items():
+        actual_value = payload[field]
+        if type(actual_value) is not type(expected_value) or actual_value != expected_value:
+            raise PipelineError(
+                f"{config.current_status_file}.{field}: expected {expected_value!r}, "
+                f"found {actual_value!r}"
+            )
+
+
 def validate_payloads(
     config: DrawConfig,
     payloads: dict[str, dict[str, Any]],
@@ -526,6 +599,12 @@ def validate_payloads(
     status = statuses.pop()
     if status not in {0, 1, 2, 3, 4}:
         raise PipelineError(f"unknown lottery status {status}")
+    if config.current_status_file in payloads:
+        _validate_current_status(
+            config,
+            payloads[config.current_status_file],
+            status,
+        )
     for filename, payload in payloads.items():
         if "error" in payload and _integer(payload["error"], f"{filename}.error") != 0:
             raise PipelineError(f"{filename}: source error is nonzero")
@@ -651,7 +730,7 @@ def publish(
     _require_draw_started(config, now)
     if confirm_year != config.year:
         raise PipelineError(f"confirmation year must be {config.year}")
-    candidate = _read_payloads(config, candidate_dir)
+    candidate = _read_payloads(config, candidate_dir, include_current_status=True)
     candidate_metadata = validate_payloads(
         config,
         candidate,
@@ -678,11 +757,24 @@ def publish(
                 f"current output year {current_year} is newer than candidate {config.year}"
             )
         if current_year == config.year:
+            if (output_dir / config.current_status_file).exists():
+                current = _read_payloads(
+                    config,
+                    output_dir,
+                    include_current_status=True,
+                )
             current_status = _integer(current[config.status_file].get("status"), "current status")
             candidate_status = _integer(
                 candidate[config.status_file].get("status"), "candidate status"
             )
             if current_status >= 3 and candidate_status <= 2:
+                expected_current_status = current_status_payload(config, current_status)
+                if current.get(config.current_status_file) != expected_current_status:
+                    write_payloads(
+                        output_dir,
+                        {config.current_status_file: expected_current_status},
+                    )
+                    return True
                 return False
             _ensure_monotonic(config, current, candidate)
             if _semantic_payloads(config, current) == _semantic_payloads(config, candidate):
@@ -700,7 +792,7 @@ def update(config: DrawConfig, output_dir: Path, confirm_year: int) -> bool:
 
 
 def inspect(config: DrawConfig, directory: Path) -> dict[str, int]:
-    payloads = _read_payloads(config, directory)
+    payloads = _read_payloads(config, directory, include_current_status=False)
     years = _payload_years(config, payloads, require_explicit_year=False)
     if len(years) != 1:
         raise PipelineError(f"published payloads declare conflicting years: {sorted(years)}")
@@ -726,7 +818,7 @@ def promote(
         raise PipelineError("promotion status must be 3 or 4")
     if status == 4 and not officially_verified:
         raise PipelineError("status 4 requires --officially-verified")
-    payloads = _read_payloads(config, directory)
+    payloads = _read_payloads(config, directory, include_current_status=True)
     metadata = validate_payloads(
         config,
         payloads,
@@ -739,6 +831,7 @@ def promote(
     payloads[config.numbers_file]["status"] = str(status)
     payloads[config.summary_file]["status"] = status
     payloads[config.status_file]["status"] = status
+    payloads[config.current_status_file] = current_status_payload(config, status)
     validate_payloads(
         config,
         payloads,
@@ -827,7 +920,11 @@ def main(argv: list[str] | None = None) -> int:
             metadata = stage(config, args.destination)
             print(f"staged {config.label} candidate: {_metadata_line(metadata)}")
         elif args.command == "validate":
-            payloads = _read_payloads(config, args.directory)
+            payloads = _read_payloads(
+                config,
+                args.directory,
+                include_current_status=True,
+            )
             metadata = validate_payloads(
                 config,
                 payloads,

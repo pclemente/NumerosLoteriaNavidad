@@ -3,15 +3,20 @@ import tempfile
 import unittest
 from datetime import datetime
 from pathlib import Path
+from unittest.mock import patch
 
 from lottery_pipeline import (
     MADRID,
     NAVIDAD,
     NINO,
+    OUTPUT_DIR,
     PipelineError,
     build_candidate,
+    current_status_payload,
+    inspect,
     parse_numbers_html,
     parse_summary_html,
+    promote,
     publish,
     scheduled_draw,
     validate_payloads,
@@ -83,6 +88,86 @@ class PipelineTests(unittest.TestCase):
         )
         self.assertIsNone(scheduled_draw(datetime(2026, 10, 22, 12, tzinfo=MADRID)))
 
+    def test_checked_in_current_status_matches_the_published_season(self):
+        expected = {
+            NAVIDAD.key: ("2026-12-22T09:00:00+01:00", 2026),
+            NINO.key: ("2027-01-06T12:00:00+01:00", 2027),
+        }
+        for config in (NAVIDAD, NINO):
+            with self.subTest(draw=config.key):
+                draw_date, year = expected[config.key]
+                payload = json.loads(
+                    (OUTPUT_DIR / config.current_status_file).read_text(encoding="utf-8")
+                )
+                historical = inspect(config, OUTPUT_DIR)
+                if historical["year"] < config.year:
+                    self.assertEqual(
+                        payload,
+                        {
+                            "year": year,
+                            "status": 0,
+                            "state": "not_started",
+                            "message": "El sorteo aún no ha comenzado.",
+                            "drawDate": draw_date,
+                            "timezone": "Europe/Madrid",
+                            "error": 0,
+                        },
+                    )
+                else:
+                    self.assertEqual(historical["year"], config.year)
+                    self.assertEqual(
+                        payload,
+                        current_status_payload(config, historical["status"]),
+                    )
+
+    def test_not_started_payloads_have_exact_draw_timestamps(self):
+        for config, year, draw_date in (
+            (NAVIDAD, 2026, "2026-12-22T09:00:00+01:00"),
+            (NINO, 2027, "2027-01-06T12:00:00+01:00"),
+        ):
+            with self.subTest(draw=config.key):
+                self.assertEqual(
+                    current_status_payload(config, 0),
+                    {
+                        "year": year,
+                        "status": 0,
+                        "state": "not_started",
+                        "message": "El sorteo aún no ha comenzado.",
+                        "drawDate": draw_date,
+                        "timezone": "Europe/Madrid",
+                        "error": 0,
+                    },
+                )
+
+    def test_historical_triplet_remains_valid_beside_current_status_endpoint(self):
+        values = {key: index for index, key in enumerate(NAVIDAD.summary_keys, start=10001)}
+        payloads = candidate(NAVIDAD, values, major_prizes(NAVIDAD, values))
+        historical = {
+            filename: json.loads(json.dumps(payloads[filename]))
+            for filename in NAVIDAD.filenames
+        }
+        historical[NAVIDAD.numbers_file]["status"] = "4"
+        historical[NAVIDAD.summary_file]["status"] = 4
+        historical[NAVIDAD.status_file]["status"] = 4
+        for payload in historical.values():
+            payload.pop("year", None)
+        historical[NAVIDAD.summary_file]["timestamp"] = int(
+            datetime(2025, 12, 22, 12, tzinfo=MADRID).timestamp()
+        )
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            write_payloads(directory, historical)
+            write_payloads(
+                directory,
+                {
+                    NAVIDAD.current_status_file: current_status_payload(NAVIDAD, 0),
+                },
+            )
+            self.assertEqual(
+                inspect(NAVIDAD, directory),
+                {"year": 2025, "status": 4, "summary": 13, "numbers": 13},
+            )
+
     def test_wrong_source_year_is_rejected(self):
         html = summary_html(NAVIDAD, {"numero1": 12345}).replace("2026", "2025")
         with self.assertRaisesRegex(PipelineError, "expected 2026"):
@@ -127,6 +212,10 @@ class PipelineTests(unittest.TestCase):
         )
         self.assertEqual(payloads[NAVIDAD.summary_file]["year"], 2026)
         self.assertEqual(payloads[NAVIDAD.status_file]["year"], 2026)
+        self.assertEqual(
+            payloads[NAVIDAD.current_status_file],
+            current_status_payload(NAVIDAD, 1),
+        )
 
     def test_summary_winner_requires_its_minimum_major_prize(self):
         with self.assertRaisesRegex(PipelineError, "expected at least 4000000"):
@@ -145,12 +234,55 @@ class PipelineTests(unittest.TestCase):
                 now=datetime(2026, 10, 22, 12, tzinfo=MADRID),
             )
 
+    def test_candidate_is_rejected_before_the_exact_draw_time(self):
+        with self.assertRaisesRegex(PipelineError, "has not reached its draw date"):
+            build_candidate(
+                NAVIDAD,
+                summary_html(NAVIDAD, {"numero1": 12345}),
+                pages(NAVIDAD, {"12345": "4000000"}),
+                now=datetime(2026, 12, 22, 8, 59, tzinfo=MADRID),
+            )
+
     def test_complete_summary_uses_status_two_not_verified_status_four(self):
         values = {key: index for index, key in enumerate(NAVIDAD.summary_keys, start=10001)}
         prizes = major_prizes(NAVIDAD, values)
         payloads = candidate(NAVIDAD, values, prizes)
         self.assertEqual(payloads[NAVIDAD.status_file]["status"], 2)
         self.assertEqual(payloads[NAVIDAD.numbers_file]["status"], "2")
+        self.assertEqual(
+            payloads[NAVIDAD.current_status_file],
+            current_status_payload(NAVIDAD, 2),
+        )
+
+    def test_current_status_contract_is_validated_exactly(self):
+        payloads = candidate(NAVIDAD, {"numero1": 12345}, {"12345": "4000000"})
+        payloads[NAVIDAD.current_status_file]["message"] = "Otro mensaje"
+        with self.assertRaisesRegex(PipelineError, "CurrentStatus.json.message"):
+            validate_payloads(
+                NAVIDAD,
+                payloads,
+                2026,
+                require_explicit_year=True,
+            )
+
+    def test_promotion_updates_current_status_with_the_legacy_triplet(self):
+        values = {key: index for index, key in enumerate(NAVIDAD.summary_keys, start=10001)}
+        payloads = candidate(NAVIDAD, values, major_prizes(NAVIDAD, values))
+        with tempfile.TemporaryDirectory() as temporary:
+            directory = Path(temporary)
+            write_payloads(directory, payloads)
+            with patch("lottery_pipeline._validate_final_coverage"):
+                promote(NAVIDAD, directory, 3, 2026, officially_verified=False)
+                promoted = json.loads(
+                    (directory / NAVIDAD.current_status_file).read_text(encoding="utf-8")
+                )
+                self.assertEqual(promoted, current_status_payload(NAVIDAD, 3))
+
+                promote(NAVIDAD, directory, 4, 2026, officially_verified=True)
+                verified = json.loads(
+                    (directory / NAVIDAD.current_status_file).read_text(encoding="utf-8")
+                )
+                self.assertEqual(verified, current_status_payload(NAVIDAD, 4))
 
     def test_publish_replaces_prior_year_history_only_with_valid_current_year(self):
         new_payloads = candidate(NAVIDAD, {"numero1": 12345}, {"12345": "4000000"})
@@ -160,17 +292,50 @@ class PipelineTests(unittest.TestCase):
             output = root / "output"
             write_payloads(staged, new_payloads)
 
-            historical = json.loads(json.dumps(new_payloads))
+            historical = {
+                filename: json.loads(json.dumps(new_payloads[filename]))
+                for filename in NAVIDAD.filenames
+            }
             for payload in historical.values():
                 payload.pop("year", None)
             historical[NAVIDAD.summary_file]["timestamp"] = int(
                 datetime(2025, 12, 22, 12, tzinfo=MADRID).timestamp()
             )
             write_payloads(output, historical)
+            write_payloads(
+                output,
+                {
+                    NAVIDAD.current_status_file: current_status_payload(NAVIDAD, 0),
+                },
+            )
 
             self.assertTrue(publish(NAVIDAD, staged, output, 2026, now=draw_time(NAVIDAD)))
             published = json.loads((output / NAVIDAD.summary_file).read_text())
             self.assertEqual(published["year"], 2026)
+            current_status = json.loads(
+                (output / NAVIDAD.current_status_file).read_text(encoding="utf-8")
+            )
+            self.assertEqual(current_status["status"], 1)
+
+    def test_same_year_output_missing_current_status_is_republished(self):
+        payloads = candidate(NAVIDAD, {"numero1": 12345}, {"12345": "4000000"})
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path(temporary)
+            staged = root / "staged"
+            output = root / "output"
+            write_payloads(staged, payloads)
+            write_payloads(
+                output,
+                {filename: payloads[filename] for filename in NAVIDAD.filenames},
+            )
+
+            self.assertTrue(publish(NAVIDAD, staged, output, 2026, now=draw_time(NAVIDAD)))
+            self.assertEqual(
+                json.loads(
+                    (output / NAVIDAD.current_status_file).read_text(encoding="utf-8")
+                )["status"],
+                1,
+            )
 
     def test_same_year_results_cannot_retract_a_published_prize(self):
         first = candidate(
@@ -225,6 +390,7 @@ class PipelineTests(unittest.TestCase):
         payloads[NAVIDAD.numbers_file]["status"] = "4"
         payloads[NAVIDAD.summary_file]["status"] = 4
         payloads[NAVIDAD.status_file]["status"] = 4
+        payloads[NAVIDAD.current_status_file] = current_status_payload(NAVIDAD, 4)
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
             staged = root / "staged"
